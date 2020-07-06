@@ -10,12 +10,13 @@ import (
 type Block struct {
 	Hash         []byte
 	Transactions []*Transaction
-	PrevHash     []byte
-	Nonce        int
+	PrevHash     []byte //Hash of previous block
+	Nonce        int // counter
 }
 
+/*provide unique hash of transactions combined*/
 func (b *Block) HashTransactions() []byte {
-	var txHashes [][]byte
+	var txHashes [][]byte //arr of txns
 	var txHash [32]byte
 
 	for _, tx := range b.Transactions {
@@ -24,6 +25,7 @@ func (b *Block) HashTransactions() []byte {
 	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
 	return txHash[:]
 }
+
 func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
 	var block Block
 	block.Transactions = txs
@@ -31,21 +33,19 @@ func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
 	block.Nonce = 0
 
 	pow := NewProof(&block)
-	nonce, hash := pow.Run()
+	nonce, hash := pow.Run() //generate hash with pow
 
 	block.Hash = hash[:]
 	block.Nonce = nonce
 
 	return &block
-	// block := &Block{[]byte{}, []byte(data), prevHash}
-	// block.DeriveHash()
-	// return block
 }
 
-func Genesis(coinbase *Transaction) *Block {
-	return CreateBlock([]*Transaction{coinbase}, []byte{})
+func Genesis(moneybase *Transaction) *Block {
+	return CreateBlock([]*Transaction{moneybase}, []byte{})
 }
 
+/*Encode block into bytes*/
 func (b *Block) Serialize() []byte {
 	var res bytes.Buffer
 	encoder := gob.NewEncoder(&res)
@@ -54,10 +54,11 @@ func (b *Block) Serialize() []byte {
 
 	Handle(err)
 
+	//return bytes representation of block
 	return res.Bytes()
-
 }
 
+/*Decode bytes into a block*/
 func Deserialize(data []byte) *Block {
 	var block Block
 
@@ -69,6 +70,8 @@ func Deserialize(data []byte) *Block {
 
 	return &block
 }
+
+/*function to handle error*/
 func Handle(err error) {
 	if err != nil {
 		log.Panic(err)

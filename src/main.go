@@ -12,6 +12,7 @@ import (
 
 type CommandLine struct{}
 
+/*commands for user*/
 func (cli *CommandLine) printUsage() {
 	fmt.Println("Usage:")
 	fmt.Println(" getbalance -address ADDRESS - get the balance for an address")
@@ -20,10 +21,11 @@ func (cli *CommandLine) printUsage() {
 	fmt.Println(" send -from FROM -to TO -amount AMOUNT - Send amount of coins")
 }
 
+/*check if passed args are valid*/
 func (cli *CommandLine) validateArgs() {
 	if len(os.Args) < 2 {
 		cli.printUsage()
-		runtime.Goexit()
+		runtime.Goexit() //exit app with garbage collection of database
 	}
 }
 
@@ -41,6 +43,7 @@ func (cli *CommandLine) printChain() {
 		fmt.Printf("PoW: %s\n", strconv.FormatBool(pow.Validate()))
 		fmt.Println()
 
+		//genesis block does not have previous hash
 		if len(block.PrevHash) == 0 {
 			break
 		}
@@ -79,6 +82,7 @@ func (cli *CommandLine) send(from, to string, amount float64) {
 func (cli *CommandLine) run() {
 	cli.validateArgs()
 
+	//set up flags for user arguments
 	getBalanceCmd := flag.NewFlagSet("getbalance", flag.ExitOnError)
 	createBlockchainCmd := flag.NewFlagSet("createblockchain", flag.ExitOnError)
 	sendCmd := flag.NewFlagSet("send", flag.ExitOnError)
