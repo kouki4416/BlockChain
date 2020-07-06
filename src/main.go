@@ -57,17 +57,17 @@ func (cli *CommandLine) getBalance(address string) {
 	chain := blockChain.ContinueBlockChain(address)
 	defer chain.Database.Close()
 
-	balance := 0
+	var balance float64 = 0
 	UTXOs := chain.FindUTXO(address)
 
 	for _, out := range UTXOs {
 		balance += out.Value
 	}
 
-	fmt.Printf("Balance of %s: %d\n", address, balance)
+	fmt.Printf("Balance of %s: %f\n", address, balance)
 }
 
-func (cli *CommandLine) send(from, to string, amount int) {
+func (cli *CommandLine) send(from, to string, amount float64) {
 	chain := blockChain.ContinueBlockChain(from)
 	defer chain.Database.Close()
 
@@ -88,7 +88,7 @@ func (cli *CommandLine) run() {
 	createBlockchainAddress := createBlockchainCmd.String("address", "", "The address to send genesis block reward to")
 	sendFrom := sendCmd.String("from", "", "Source wallet address")
 	sendTo := sendCmd.String("to", "", "Destination wallet address")
-	sendAmount := sendCmd.Int("amount", 0, "Amount to send")
+	sendAmount := sendCmd.Float64("amount", 0, "Amount to send")
 
 	switch os.Args[1] {
 	case "getbalance":

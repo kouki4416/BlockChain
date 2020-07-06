@@ -16,7 +16,7 @@ type Transaction struct {
 }
 
 type TxOutput struct {
-	Value  int
+	Value  float64 //Amount of money
 	PubKey string
 }
 
@@ -51,7 +51,7 @@ func CoinbaseTx(to, data string) *Transaction {
 	return &tx
 }
 
-func NewTransaction(from, to string, amount int, chain *BlockChain) *Transaction {
+func NewTransaction(from, to string, amount float64, chain *BlockChain) *Transaction {
 	var inputs []TxInput
 	var outputs []TxOutput
 
