@@ -1,15 +1,13 @@
 package main
 
 import (
-	"blockChainApp/src/blockChain"
+	"../src/blockChain"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"runtime"
 	"strconv"
-
-
 )
 
 type CommandLine struct{}
