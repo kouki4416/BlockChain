@@ -2,33 +2,51 @@ package blockChain
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/gob"
 	"log"
 )
 
-type Block struct{
-	Hash []byte
-	Data []byte
-	PrevHash []byte
-	Nonce int
+type Block struct {
+	Hash         []byte
+	Transactions []*Transaction
+	PrevHash     []byte
+	Nonce        int
 }
 
-func CreateBlock(data string, prevHash []byte) *Block {
-	block := &Block{[]byte{}, []byte(data), prevHash, 0}
-	pow := NewProof(block)
+func (b *Block) HashTransactions() []byte {
+	var txHashes [][]byte
+	var txHash [32]byte
+
+	for _, tx := range b.Transactions {
+		txHashes = append(txHashes, tx.ID)
+	}
+	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
+	return txHash[:]
+}
+func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
+	var block Block
+	block.Transactions = txs
+	block.PrevHash = prevHash
+	block.Nonce = 0
+
+	pow := NewProof(&block)
 	nonce, hash := pow.Run()
 
 	block.Hash = hash[:]
 	block.Nonce = nonce
-	return block
+
+	return &block
+	// block := &Block{[]byte{}, []byte(data), prevHash}
+	// block.DeriveHash()
+	// return block
 }
 
-
-func Genesis() *Block{
-	return CreateBlock("Genesis", []byte{})
+func Genesis(coinbase *Transaction) *Block {
+	return CreateBlock([]*Transaction{coinbase}, []byte{})
 }
 
-func (b *Block) Serialize() []byte{
+func (b *Block) Serialize() []byte {
 	var res bytes.Buffer
 	encoder := gob.NewEncoder(&res)
 
@@ -37,6 +55,7 @@ func (b *Block) Serialize() []byte{
 	Handle(err)
 
 	return res.Bytes()
+
 }
 
 func Deserialize(data []byte) *Block {
@@ -50,9 +69,8 @@ func Deserialize(data []byte) *Block {
 
 	return &block
 }
-
-func Handle(err error){
-	if err != nil{
+func Handle(err error) {
+	if err != nil {
 		log.Panic(err)
 	}
 }
