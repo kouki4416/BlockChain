@@ -159,52 +159,6 @@ func (iter *BlockChainIterator) Next() *Block {
 	return block
 }
 
-/*	find transaction outputs which are not referenced by other input
-	output not referenced by input means the money still exists
-*/
-func (chain *BlockChain) FindUnspentTransactions(pubKeyHash []byte) []Transaction {
-	var unspentTxs []Transaction
-
-	spentTXOs := make(map[string][]int)
-
-	iter := chain.Iterator()
-
-	for {
-		block := iter.Next()
-
-		for _, tx := range block.Transactions { //iterate each block
-			txID := hex.EncodeToString(tx.ID)
-
-		Outputs: //loop to check how much money spent
-			for outIdx, out := range tx.Outputs {
-				if spentTXOs[txID] != nil {
-					for _, spentOut := range spentTXOs[txID] { //iterate txns of a block
-						if spentOut == outIdx {
-							continue Outputs
-						}
-					}
-				}
-				if out.IsLockedWithKey(pubKeyHash) {
-					unspentTxs = append(unspentTxs, *tx)
-				}
-			}
-			if tx.IsMoneybase() == false {
-				for _, in := range tx.Inputs {
-					if in.UsesKey(pubKeyHash) {
-						inTxID := hex.EncodeToString(in.ID)
-						spentTXOs[inTxID] = append(spentTXOs[inTxID], in.Out)
-					}
-				}
-			}
-		}
-
-		//break since genesis block
-		if len(block.PrevHash) == 0 {
-			break
-		}
-	}
-	return unspentTxs
-}
 
 /*unspent transaction output*/
 func (chain *BlockChain) FindUTXO() map[string]TxOutputs {
@@ -245,31 +199,7 @@ func (chain *BlockChain) FindUTXO() map[string]TxOutputs {
 	return UTXO
 }
 
-/**/
-func (chain *BlockChain) FindSpendableOutputs(pubKeyHash []byte, amount float64) (float64, map[string][]int) {
-	unspentOuts := make(map[string][]int)
-	unspentTxs := chain.FindUnspentTransactions(pubKeyHash)
-	var accumulated float64 = 0
 
-Work:
-	for _, tx := range unspentTxs {
-		txID := hex.EncodeToString(tx.ID)
-
-		for outIdx, out := range tx.Outputs {
-			//check if unlocked and amount enough
-			if out.IsLockedWithKey(pubKeyHash) && accumulated < amount {
-				accumulated += out.Value
-				unspentOuts[txID] = append(unspentOuts[txID], outIdx)
-
-				if accumulated >= amount {
-					break Work
-				}
-			}
-		}
-	}
-
-	return accumulated, unspentOuts
-}
 
 func (bc *BlockChain) FindTransaction(ID []byte) (Transaction, error) {
 	iter := bc.Iterator()
