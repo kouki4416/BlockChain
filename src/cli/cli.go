@@ -78,6 +78,10 @@ func (cli *CommandLine) createBlockChain(address string) {
 	}
 	chain := blockChain.InitBlockChain(address)
 	chain.Database.Close()
+
+	UTXOSet := blockChain.UTXOSet{chain}
+	UTXOSet.Reindex()
+
 	fmt.Println("Finished!")
 }
 
@@ -113,7 +117,8 @@ func (cli *CommandLine) send(from, to string, amount float64) {
 	defer chain.Database.Close()
 
 	tx := blockChain.NewTransaction(from, to, amount, &UTXOSet)
-	block := chain.AddBlock([]*blockChain.Transaction{tx})
+	mbTx := blockChain.MoneybaseTx(from, "")
+	block := chain.AddBlock([]*blockChain.Transaction{mbTx, tx})
 	UTXOSet.Update(block)
 	fmt.Println("Success!")
 }

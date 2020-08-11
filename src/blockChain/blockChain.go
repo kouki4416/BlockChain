@@ -234,6 +234,11 @@ func (bc *BlockChain) SignTransaction(tx *Transaction, privKey ecdsa.PrivateKey)
 }
 
 func (bc *BlockChain) VerifyTransaction(tx *Transaction) bool {
+	if tx.IsMoneybase(){
+		return true //check if transaction is money base
+	}
+
+
 	prevTXs := make(map[string]Transaction)
 
 	for _, in := range tx.Inputs {

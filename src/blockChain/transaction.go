@@ -44,30 +44,23 @@ func (tx *Transaction) Hash() []byte {
 	return hash[:]
 }
 
-/*create hash based on transaction byte data*/
-func (tx *Transaction) SetID() {
-	var encoded bytes.Buffer
-	var hash [32]byte
-	encode := gob.NewEncoder(&encoded)
-	err := encode.Encode(tx)
-	Handle(err)
-
-	hash = sha256.Sum256(encoded.Bytes())
-	tx.ID = hash[:]
-}
-
 /*base transaction to give $100*/
 func MoneybaseTx(to, data string) *Transaction {
 	if data == "" {
-		data = fmt.Sprintf("Coins to %s", to)
+		randData := make([]byte, 24)
+		_, err := rand.Read(randData)
+		if err != nil{
+			log.Panic(err)
+		}
+		data = fmt.Sprint("x%", randData)
 	}
 
 	txin := TxInput{[]byte{}, -1, nil, []byte(data)} // empty input
 
-	txout := NewTXOutput(100, to) //give $100 beginning for simplicity
+	txout := NewTXOutput(20, to) //give $100 beginning for simplicity
 
 	tx := Transaction{nil, []TxInput{txin}, []TxOutput{*txout}}
-	tx.SetID()
+	tx.Hash()
 
 	return &tx
 }
