@@ -2,7 +2,6 @@ package blockChain
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/gob"
 	"log"
 )
@@ -17,13 +16,12 @@ type Block struct {
 /*provide unique hash of transactions combined*/
 func (b *Block) HashTransactions() []byte {
 	var txHashes [][]byte //arr of txns
-	var txHash [32]byte
 
 	for _, tx := range b.Transactions {
-		txHashes = append(txHashes, tx.ID)
+		txHashes = append(txHashes, tx.Serialize())
 	}
-	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
-	return txHash[:]
+	tree := NewMerkleTree(txHashes)
+	return tree.RootNode.Data
 }
 
 func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
