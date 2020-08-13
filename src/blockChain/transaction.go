@@ -44,6 +44,16 @@ func (tx *Transaction) Hash() []byte {
 	return hash[:]
 }
 
+
+func DeserializeTransaction(data []byte) Transaction{
+	var transaction Transaction
+
+	decoder := gob.NewDecoder(bytes.NewReader(data))
+	err := decoder.Decode(&transaction)
+	Handle(err)
+	return transaction
+}
+
 /*base transaction to give $100*/
 func MoneybaseTx(to, data string) *Transaction {
 	if data == "" {

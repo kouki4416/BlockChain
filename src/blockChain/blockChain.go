@@ -7,13 +7,15 @@ import (
 	"fmt"
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
+	"log"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 const (
-	dbPath      = "./tmp/blocks"
-	dbFile      = "./tmp/blocks/MANIFEST"
+	dbPath      = "./tmp/blocks_%s"
 	genesisData = "First Transaction from Genesis"
 )
 
@@ -30,8 +32,8 @@ type BlockChainIterator struct {
 	Database    *badger.DB
 }
 
-func DBexists() bool {
-	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
+func DBexists(path string) bool {
+	if _, err := os.Stat(path + "/MANIFEST"); os.IsNotExist(err) {
 		return false
 	}
 
@@ -39,8 +41,9 @@ func DBexists() bool {
 }
 
 /**/
-func ContinueBlockChain(address string) *BlockChain {
-	if DBexists() == false {
+func ContinueBlockChain(nodeId string) *BlockChain {
+	path := fmt.Sprintf(dbPath, nodeId)
+	if DBexists(path) == false {
 		fmt.Println("No existing blockchain found, create one!")
 		runtime.Goexit()
 	}
@@ -51,7 +54,8 @@ func ContinueBlockChain(address string) *BlockChain {
 	opts := badger.DefaultOptions(dbPath)
 	opts.Dir = dbPath
 	opts.ValueDir = dbPath
-	db, err := badger.Open(opts)
+
+	db, err := openDB(path, opts)
 	Handle(err)
 
 	//get last hash to continue from existing block chain
@@ -69,11 +73,12 @@ func ContinueBlockChain(address string) *BlockChain {
 	return &chain
 }
 
-func InitBlockChain(address string) *BlockChain {
+func InitBlockChain(address, nodeId string) *BlockChain {
+	path := fmt.Sprintf(dbPath, nodeId)
 	var lastHash []byte
 
 	//check if db exists
-	if DBexists() {
+	if DBexists(path) {
 		fmt.Println("Blockchain already exists")
 		runtime.Goexit()
 	}
@@ -82,7 +87,8 @@ func InitBlockChain(address string) *BlockChain {
 	opts := badger.DefaultOptions(dbPath)
 	opts.Dir = dbPath
 	opts.ValueDir = dbPath
-	db, err := badger.Open(opts)
+
+	db, err := openDB(path, opts)
 	Handle(err)
 
 	err = db.Update(func(txn *badger.Txn) error {
@@ -107,8 +113,16 @@ func InitBlockChain(address string) *BlockChain {
 }
 
 /**/
-func (chain *BlockChain) AddBlock(transactions []*Transaction) *Block {
+func (chain *BlockChain) MineBlock(transactions []*Transaction) *Block {
 	var lastHash []byte
+	var lastBlockData []byte
+	var lastHeight int
+
+	for _, tx := range transactions{
+		if chain.VerifyTransaction(tx) != true{
+			log.Panic("Invalid Transaction")
+		}
+	}
 
 	//Just copy the last hash and return
 	err := chain.Database.View(func(txn *badger.Txn) error {
@@ -116,12 +130,20 @@ func (chain *BlockChain) AddBlock(transactions []*Transaction) *Block {
 		Handle(err)
 		lastHash, err = item.ValueCopy(lastHash)
 
+		item, err = txn.Get(lastHash)
+		Handle(err)
+		lastBlockData, _ := item.ValueCopy(lastBlockData)
+
+		lastBlock := Deserialize(lastBlockData)
+
+		lastHeight = lastBlock.Height
+
 		return err
 	})
 	Handle(err)
 
 	//Create a new block with last hash
-	newBlock := CreateBlock(transactions, lastHash)
+	newBlock := CreateBlock(transactions, lastHash, lastHeight+1)
 
 	//Put (hash, serialized block) into db
 	//Associate lh with hash to easily get last hash
@@ -137,6 +159,100 @@ func (chain *BlockChain) AddBlock(transactions []*Transaction) *Block {
 	Handle(err)
 
 	return newBlock
+}
+
+func (chain *BlockChain) AddBlock(block *Block){
+	var lastHash []byte
+	var lastBlockData []byte
+	err := chain.Database.Update(func(txn *badger.Txn) error{
+		if _, err := txn.Get(block.Hash); err == nil{
+			return nil
+		}
+
+		blockData := block.Serialize()
+		err := txn.Set(block.Hash, blockData)
+		Handle(err)
+
+		item, err := txn.Get([]byte("lh"))
+		Handle(err)
+		lastHash, _ = item.ValueCopy(lastHash)
+
+		item, err = txn.Get(lastHash)
+		Handle(err)
+		lastBlockData, _ = item.ValueCopy(lastBlockData)
+
+		lastBlock := Deserialize(lastBlockData)
+
+		if block.Height > lastBlock.Height {
+			err = txn.Set([]byte("lh"), block.Hash)
+			Handle(err)
+			chain.LastHash = block.Hash
+		}
+
+		return nil
+	})
+	Handle(err)
+}
+
+func (chain *BlockChain) GetBlock(blockHash []byte) (Block, error) {
+	var block Block
+	var blockData []byte
+
+	err := chain.Database.View(func(txn *badger.Txn) error{
+		if item, err := txn.Get(blockHash); err != nil{
+			return errors.New("Block not found")
+		} else{
+			blockData, _ = item.ValueCopy(blockData)
+			block = *Deserialize(blockData)
+		}
+		return nil
+	})
+
+	if err != nil{
+		return block, err // return empty block and err
+	}
+
+	return block, nil
+}
+
+//check if the copy of the block chain is the same
+func (chain *BlockChain) GetBlockHashes() [][]byte{
+	var blocks [][]byte
+
+	iter := chain.Iterator()
+
+	for{
+		block := iter.Next()
+
+		blocks = append(blocks, block.Hash)
+
+		if len(block.PrevHash) == 0{
+			break
+		}
+	}
+	return blocks
+}
+
+func (chain *BlockChain) GetBestHeight() int{
+	var lastBlock Block
+	var lastHash[] byte
+	var lastBlockData[] byte
+
+	err := chain.Database.View(func(txn *badger.Txn) error{
+		item, err := txn.Get([]byte("lh"))//get lasthash
+		Handle(err)
+		lastHash, err = item.ValueCopy(lastHash)
+
+		item, err = txn.Get(lastHash)
+		Handle(err)
+		lastBlockData, _ = item.ValueCopy(lastBlockData)
+
+		lastBlock = *Deserialize(lastBlockData)
+		return nil
+	})
+	Handle(err)
+
+	return lastBlock.Height
 }
 
 func (chain *BlockChain) Iterator() *BlockChainIterator {
@@ -248,4 +364,31 @@ func (bc *BlockChain) VerifyTransaction(tx *Transaction) bool {
 	}
 
 	return tx.Verify(prevTXs)
+}
+
+func retry(dir string, originalOpts badger.Options) (*badger.DB, error){
+	lockPath := filepath.Join(dir, "LOCK")
+	if err := os.Remove(lockPath); err != nil{
+		return nil, fmt.Errorf(`removing "LOCK": %s`, err)
+	}
+	retryOPts := originalOpts
+	retryOPts.Truncate = true
+	db,err := badger.Open(retryOPts)
+	return db, err
+}
+
+func openDB(dir string, opts badger.Options) (*badger.DB, error){
+	if db, err := badger.Open(opts); err != nil{
+		if strings.Contains(err.Error(), "LOCK"){// lock file exists -> db locked
+			if db, err := retry(dir, opts); err == nil{
+				log.Println("database unlocked")
+				return db, nil
+			}
+			log.Println("could not unlock database")
+		}
+		return nil, err
+	} else {
+		return db, nil
+	}
+
 }
