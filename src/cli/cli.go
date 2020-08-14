@@ -118,7 +118,7 @@ func (cli *CommandLine) send(from, to string, amount float64) {
 
 	tx := blockChain.NewTransaction(from, to, amount, &UTXOSet)
 	mbTx := blockChain.MoneybaseTx(from, "")
-	block := chain.AddBlock([]*blockChain.Transaction{mbTx, tx})
+	block := chain.MineBlock([]*blockChain.Transaction{mbTx, tx})
 	UTXOSet.Update(block)
 	fmt.Println("Success!")
 }

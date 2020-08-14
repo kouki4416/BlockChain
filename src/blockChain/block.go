@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"encoding/gob"
 	"log"
+	"time"
 )
 
 type Block struct {
+	Timestamp 	 int64
 	Hash         []byte
 	Transactions []*Transaction
 	PrevHash     []byte //Hash of previous block
 	Nonce        int // counter
+	Height 		 int // order of blocks
 }
 
 /*provide unique hash of transactions combined*/
@@ -24,23 +27,19 @@ func (b *Block) HashTransactions() []byte {
 	return tree.RootNode.Data
 }
 
-func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
-	var block Block
-	block.Transactions = txs
-	block.PrevHash = prevHash
-	block.Nonce = 0
-
-	pow := NewProof(&block)
+func CreateBlock(txs []*Transaction, prevHash []byte, height int) *Block {
+	block := &Block{time.Now().Unix(), []byte{}, txs, prevHash, 0, height}
+	pow := NewProof(block)
 	nonce, hash := pow.Run() //generate hash with pow
 
 	block.Hash = hash[:]
 	block.Nonce = nonce
 
-	return &block
+	return block
 }
 
 func Genesis(moneybase *Transaction) *Block {
-	return CreateBlock([]*Transaction{moneybase}, []byte{})
+	return CreateBlock([]*Transaction{moneybase}, []byte{}, 0)
 }
 
 /*Encode block into bytes*/

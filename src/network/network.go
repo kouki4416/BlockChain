@@ -166,7 +166,7 @@ func HandleBlock(request []byte, chain *blockChain.BlockChain) {
 	block := blockChain.Deserialize(blockData)
 
 	fmt.Println("Received a new block!")
-	chain.AddBlock(block)
+	chain.MineBlock(block)
 
 	fmt.Printf("Added block %x\n", block.Hash)
 
