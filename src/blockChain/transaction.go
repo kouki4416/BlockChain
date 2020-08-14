@@ -75,11 +75,11 @@ func MoneybaseTx(to, data string) *Transaction {
 	return &tx
 }
 
-func NewTransaction(from, to string, amount float64, UTXO *UTXOSet) *Transaction {
+func NewTransaction(from, to string, amount float64, UTXO *UTXOSet, nodeID string) *Transaction {
 	var inputs []TxInput
 	var outputs []TxOutput
 
-	wallets, err := wallet.CreateWallets()
+	wallets, err := wallet.CreateWallets(nodeID)
 	Handle(err)
 	w := wallets.GetWallet(from)
 	pubKeyHash := wallet.PublicKeyHash(w.PublicKey)

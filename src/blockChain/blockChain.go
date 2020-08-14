@@ -51,9 +51,9 @@ func ContinueBlockChain(nodeId string) *BlockChain {
 	var lastHash []byte
 
 	//set db
-	opts := badger.DefaultOptions(dbPath)
-	opts.Dir = dbPath
-	opts.ValueDir = dbPath
+	opts := badger.DefaultOptions(path)
+	opts.Dir = path
+	opts.ValueDir = path
 
 	db, err := openDB(path, opts)
 	Handle(err)
@@ -84,9 +84,9 @@ func InitBlockChain(address, nodeId string) *BlockChain {
 	}
 
 	//Set up path for the database
-	opts := badger.DefaultOptions(dbPath)
-	opts.Dir = dbPath
-	opts.ValueDir = dbPath
+	opts := badger.DefaultOptions(path)
+	opts.Dir = path
+	opts.ValueDir = path
 
 	db, err := openDB(path, opts)
 	Handle(err)
