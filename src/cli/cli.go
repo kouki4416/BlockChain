@@ -52,14 +52,14 @@ func (cli *CommandLine) validateArgs() {
 	}
 }
 
-func (cli *CommandLine) StartNode(nodeID, minerAddress string){
-	fmt.Printf("Starting NOde %s\n, nodeID")
+func (cli *CommandLine) StartNode(nodeID, minerAddress string) {
+	fmt.Printf("Starting Node %s\n", nodeID)
 
 	if len(minerAddress) > 0 {
-		if wallet.ValidateAddress(minerAddress){
+		if wallet.ValidateAddress(minerAddress) {
 			fmt.Println("Mining is on. Address to receive rewards: ", minerAddress)
 		} else {
-			log.Panic("wrong miner address")
+			log.Panic("Wrong miner address!")
 		}
 	}
 	network.StartServer(nodeID, minerAddress)
@@ -93,7 +93,7 @@ func (cli *CommandLine) createBlockChain(address, nodeID string) {
 		log.Panic("Address is not Valid")
 	}
 	chain := blockChain.InitBlockChain(address, nodeID)
-	chain.Database.Close()
+	defer chain.Database.Close()
 
 	UTXOSet := blockChain.UTXOSet{chain}
 	UTXOSet.Reindex()
@@ -117,38 +117,38 @@ func (cli *CommandLine) getBalance(address, nodeID string) {
 	for _, out := range UTXOs {
 		balance += out.Value
 	}
-
 	fmt.Printf("Balance of %s: %f\n", address, balance)
 }
 
 func (cli *CommandLine) send(from, to string, amount float64, nodeID string, mineNow bool) {
-	if !wallet.ValidateAddress(from) {
+	if !wallet.ValidateAddress(to) {
 		log.Panic("Address is not Valid")
 	}
-	if !wallet.ValidateAddress(to) {
+	if !wallet.ValidateAddress(from) {
 		log.Panic("Address is not Valid")
 	}
 	chain := blockChain.ContinueBlockChain(nodeID)
 	UTXOSet := blockChain.UTXOSet{chain}
 	defer chain.Database.Close()
 
-	//wallets, err := wallet.CreateWallets(nodeID)
-	//if err != nil{
-	//	log.Panic(err)
-	//}
-	//wallet := wallets.GetWallet(from)
+	wallets, err := wallet.CreateWallets(nodeID)
+	if err != nil {
+		log.Panic(err)
+	}
+	wallet := wallets.GetWallet(from)
 
-	tx := blockChain.NewTransaction(from, to, amount, &UTXOSet, nodeID)
-	if mineNow{
+	tx := blockChain.NewTransaction(&wallet, to, amount, &UTXOSet)
+	if mineNow {
 		cbTx := blockChain.MoneybaseTx(from, "")
 		txs := []*blockChain.Transaction{cbTx, tx}
 		block := chain.MineBlock(txs)
 		UTXOSet.Update(block)
-	} else{
+	} else {
 		network.SendTx(network.KnownNodes[0], tx)
 		fmt.Println("send tx")
 	}
-	fmt.Println("success!")
+
+	fmt.Println("Success!")
 }
 
 func(cli *CommandLine) reindexUTXO(nodeID string){

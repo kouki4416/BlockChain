@@ -67,30 +67,25 @@ func MoneybaseTx(to, data string) *Transaction {
 
 	txin := TxInput{[]byte{}, -1, nil, []byte(data)} // empty input
 
-	txout := NewTXOutput(20, to) //give $100 beginning for simplicity
+	txout := NewTXOutput(1000, to) //give $100 beginning for simplicity
 
 	tx := Transaction{nil, []TxInput{txin}, []TxOutput{*txout}}
-	tx.Hash()
+	tx.ID = tx.Hash()
 
 	return &tx
 }
 
-func NewTransaction(from, to string, amount float64, UTXO *UTXOSet, nodeID string) *Transaction {
+func NewTransaction(w *wallet.Wallet, to string, amount float64, UTXO *UTXOSet) *Transaction {
 	var inputs []TxInput
 	var outputs []TxOutput
 
-	wallets, err := wallet.CreateWallets(nodeID)
-	Handle(err)
-	w := wallets.GetWallet(from)
 	pubKeyHash := wallet.PublicKeyHash(w.PublicKey)
-
 	acc, validOutputs := UTXO.FindSpendableOutputs(pubKeyHash, amount)
 
 	if acc < amount {
 		log.Panic("Error: not enough funds")
 	}
 
-	//
 	for txid, outs := range validOutputs {
 		txID, err := hex.DecodeString(txid)
 		Handle(err)
@@ -101,10 +96,10 @@ func NewTransaction(from, to string, amount float64, UTXO *UTXOSet, nodeID strin
 		}
 	}
 
-	//user sending money to address
+	from := fmt.Sprintf("%s", w.Address())
+
 	outputs = append(outputs, *NewTXOutput(amount, to))
 
-	//user receive change as output
 	if acc > amount {
 		outputs = append(outputs, *NewTXOutput(acc-amount, from))
 	}
@@ -141,9 +136,10 @@ func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 	if tx.IsMoneybase() {
 		return true
 	}
+
 	for _, in := range tx.Inputs {
 		if prevTXs[hex.EncodeToString(in.ID)].ID == nil {
-			log.Panic("Previous transaction does not exist")
+			log.Panic("Previous transaction not correct")
 		}
 	}
 
@@ -154,11 +150,10 @@ func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 		prevTx := prevTXs[hex.EncodeToString(in.ID)]
 		txCopy.Inputs[inId].Signature = nil
 		txCopy.Inputs[inId].PubKey = prevTx.Outputs[in.Out].PubKeyHash
-		txCopy.ID = txCopy.Hash()
-		txCopy.Inputs[inId].PubKey = nil
 
 		r := big.Int{}
 		s := big.Int{}
+
 		sigLen := len(in.Signature)
 		r.SetBytes(in.Signature[:(sigLen / 2)])
 		s.SetBytes(in.Signature[(sigLen / 2):])
@@ -169,12 +164,15 @@ func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 		x.SetBytes(in.PubKey[:(keyLen / 2)])
 		y.SetBytes(in.PubKey[(keyLen / 2):])
 
-		rawPubKey := ecdsa.PublicKey{curve, &x, &y}
-		if ecdsa.Verify(&rawPubKey, txCopy.ID, &r, &s) == false {
+		dataToVerify := fmt.Sprintf("%x\n", txCopy)
+
+		rawPubKey := ecdsa.PublicKey{Curve: curve, X: &x, Y: &y}
+		if ecdsa.Verify(&rawPubKey, []byte(dataToVerify), &r, &s) == false {
 			return false
 		}
-
+		txCopy.Inputs[inId].PubKey = nil
 	}
+
 	return true
 }
 
@@ -215,13 +213,14 @@ func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transac
 		prevTX := prevTXs[hex.EncodeToString(in.ID)]
 		txCopy.Inputs[inId].Signature = nil
 		txCopy.Inputs[inId].PubKey = prevTX.Outputs[in.Out].PubKeyHash
-		txCopy.ID = txCopy.Hash()
-		txCopy.Inputs[inId].PubKey = nil
 
-		r, s, err := ecdsa.Sign(rand.Reader, &privKey, txCopy.ID)
+		dataToSign := fmt.Sprintf("%x\n", txCopy)
+
+		r, s, err := ecdsa.Sign(rand.Reader, &privKey, []byte(dataToSign))
 		Handle(err)
 		signature := append(r.Bytes(), s.Bytes()...)
 
 		tx.Inputs[inId].Signature = signature
+		txCopy.Inputs[inId].PubKey = nil
 	}
 }
