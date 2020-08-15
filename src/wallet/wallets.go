@@ -24,7 +24,13 @@ func CreateWallets(nodeId string) (*Wallets, error) {
 
 	return &wallets, err
 }
-
+//func (ws *Wallets)GetAllNames() []string {
+//	var names []string
+//
+//	for name := range ws.Wallets{
+//
+//	}
+//}
 func (ws *Wallets) GetAllAddresses() []string {
 	var addresses []string
 
@@ -35,8 +41,8 @@ func (ws *Wallets) GetAllAddresses() []string {
 	return addresses
 }
 
-func (ws *Wallets) AddWallet() string {
-	wallet := MakeWallet()
+func (ws *Wallets) AddWallet(name, carType string, hasCar bool) string {
+	wallet := MakeWallet(name, carType, hasCar)
 	address := fmt.Sprintf("%s", wallet.Address())
 
 	ws.Wallets[address] = wallet

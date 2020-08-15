@@ -229,3 +229,23 @@ func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transac
 		txCopy.Inputs[inId].PubKey = nil
 	}
 }
+
+func BuyTransaction(to, data string, amount float64) *Transaction {
+	if data == "" {
+		randData := make([]byte, 24)
+		_, err := rand.Read(randData)
+		if err != nil {
+			log.Panic(err)
+		}
+		data = fmt.Sprint("x%", randData)
+	}
+
+	txin := TxInput{[]byte{}, -1, nil, []byte(data)} // empty input
+
+	txout := NewTXOutput(amount, to)
+
+	tx := Transaction{nil, []TxInput{txin}, []TxOutput{*txout}}
+	tx.ID = tx.Hash()
+
+	return &tx
+}

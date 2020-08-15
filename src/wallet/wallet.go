@@ -19,6 +19,9 @@ const (
 type Wallet struct {
 	PrivateKey ecdsa.PrivateKey
 	PublicKey  []byte
+	HasCar	bool
+	CarType	string
+	Name	string
 }
 
 func (w Wallet) Address() []byte {
@@ -56,9 +59,9 @@ func NewKeyPair() (ecdsa.PrivateKey, []byte) {
 	return *private, pub
 }
 
-func MakeWallet() *Wallet {
+func MakeWallet(name, carType string, hasCar bool) *Wallet {
 	private, public := NewKeyPair()
-	wallet := Wallet{private, public}
+	wallet := Wallet{private, public, hasCar, carType, name}
 
 	return &wallet
 }
