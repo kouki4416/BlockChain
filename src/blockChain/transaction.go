@@ -67,7 +67,9 @@ func MoneybaseTx(to, data string) *Transaction {
 
 	txin := TxInput{[]byte{}, -1, nil, []byte(data)} // empty input
 
-	txout := NewTXOutput(1000, to) //give $100 beginning for simplicity
+
+	txout := NewTXOutput(100, to) //give $100 beginning for simplicity
+
 
 	tx := Transaction{nil, []TxInput{txin}, []TxOutput{*txout}}
 	tx.ID = tx.Hash()
@@ -115,6 +117,7 @@ func NewTransaction(w *wallet.Wallet, to string, amount float64, UTXO *UTXOSet) 
 func (tx *Transaction) IsMoneybase() bool {
 	return len(tx.Inputs) == 1 && len(tx.Inputs[0].ID) == 0 && tx.Inputs[0].Out == -1
 }
+
 func (tx *Transaction) TrimmedCopy() Transaction {
 	var inputs []TxInput
 	var outputs []TxOutput
@@ -139,7 +142,9 @@ func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 
 	for _, in := range tx.Inputs {
 		if prevTXs[hex.EncodeToString(in.ID)].ID == nil {
-			log.Panic("Previous transaction not correct")
+
+			log.Panic("Verify: Previous transaction does not exist")
+
 		}
 	}
 
@@ -203,7 +208,7 @@ func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transac
 
 	for _, in := range tx.Inputs {
 		if prevTXs[hex.EncodeToString(in.ID)].ID == nil {
-			log.Panic("ERROR: Previous transaction does not exist")
+			log.Panic("ERROR: Sign: Previous transaction does not exist")
 		}
 	}
 
