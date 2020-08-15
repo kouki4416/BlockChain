@@ -22,7 +22,7 @@ func (cli *CommandLine) printUsage() {
 	fmt.Println(" createblockchain -address ADDRESS creates a blockchain and sends genesis reward to address")
 	fmt.Println(" printchain - Prints the blocks in the chain")
 	fmt.Println(" send -from FROM -to TO -amount AMOUNT -mine - Send amount of coins")
-	fmt.Println(" createaccount -hascar true/false -cartype Type -name Name Creates a new account")
+	fmt.Println(" createaccount -name NAME -cartype CARTYPE -hascar true/false  Type Creates a new account")
 	fmt.Println(" listaccount - Lists the accounts in our account file")
 	fmt.Println(" reindexUTXO - Rebuilds the UTXO set")
 	fmt.Println(" startnode -miner ADDRESS - Start a node with ID specified in NODE_ID env")
@@ -34,21 +34,21 @@ func (cli *CommandLine) listAccount(nodeID string) {
 	wallets, _ := wallet.CreateWallets(nodeID)
 
 	addresses := wallets.GetAllAddresses()
-	//name:= wallets.GetALLNames()
-	//
-	//carType := wallets.GetAllCarType()
 	for _, address := range addresses {
-		fmt.Println(address)
-		fmt.Println(wallets.Wallets[address].Name)
-
-		fmt.Println(wallets.Wallets[address].CarType)
-		fmt.Println(wallets.Wallets[address].HasCar)
+		fmt.Printf("Public Key: %s\n",address)
+		fmt.Printf("Name: %s\n", wallets.Wallets[address].Name)
+		fmt.Printf("Car Type: %s\n", wallets.Wallets[address].CarType)
+		fmt.Println("---------------------------------------------------")
 	}
 
 }
 func (cli *CommandLine) createAccount(nodeID string, name, carType string, hasCar bool) {
-	fmt.Printf("New name is %s\n", name)
-	fmt.Printf("New name is %s\n", carType)
+	fmt.Printf("New account name: %s\n", name)
+	if(hasCar){
+		fmt.Printf("Account's car: %s\n", carType)
+	} else{
+		fmt.Printf("Account did not register a car")
+	}
 	wallets, _ := wallet.CreateWallets(nodeID)
 	address := wallets.AddWallet(name, carType, hasCar)
 	wallets.SaveFile(nodeID)
